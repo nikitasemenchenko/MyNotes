@@ -3,4 +3,7 @@
     <string name="add_note">Add Note</string>
     <string name="name">Название</string>
     <string name="text">Текст</string>
+    <string name="create">Создать</string>
+    <string name="cancel">Отмена</string>
+    <string name="save">Сохранить</string>
 </resources>
