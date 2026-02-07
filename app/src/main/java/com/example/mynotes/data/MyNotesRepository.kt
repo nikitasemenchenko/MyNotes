@@ -10,4 +10,6 @@ class MyNotesRepository(
     suspend fun updateNote(note: Note) = myNotesDao.update(note)
 
     fun getNotes(): Flow<List<Note>> = myNotesDao.getNotes()
+
+    suspend fun deleteNotes(notes: List<Int>) = myNotesDao.deleteNotes(notes)
 }

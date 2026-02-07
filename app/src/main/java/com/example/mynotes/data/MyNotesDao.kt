@@ -17,4 +17,7 @@ interface MyNotesDao {
 
     @Query("SELECT * FROM notes")
     fun getNotes(): Flow<List<Note>>
+
+    @Query("DELETE from notes WHERE id in (:ids)")
+    suspend fun deleteNotes(ids: List<Int>)
 }

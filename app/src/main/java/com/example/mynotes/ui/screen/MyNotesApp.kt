@@ -1,6 +1,6 @@
 package com.example.mynotes.ui.screen
 
-import androidx.compose.foundation.clickable
+import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -13,12 +13,16 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
+import androidx.compose.material.icons.filled.Clear
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.BasicAlertDialog
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.FloatingActionButton
 import androidx.compose.material3.Icon
+import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
@@ -26,8 +30,6 @@ import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.TopAppBar
 import androidx.compose.material3.TopAppBarDefaults
-import androidx.compose.material3.TopAppBarDefaults.enterAlwaysScrollBehavior
-import androidx.compose.material3.TopAppBarScrollBehavior
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -43,6 +45,7 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mynotes.R
 import com.example.mynotes.data.Note
+import java.text.SimpleDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -50,10 +53,17 @@ fun MyNotesApp(
     vm: MyNotesViewModel = viewModel(factory = MyNotesViewModel.Factory)
 ) {
     val uiState by vm.uiState.collectAsState()
-    val scrollBehavior = enterAlwaysScrollBehavior()
     Scaffold(
         topBar = {
-            MyNotesTopAppBar(scrollBehavior)
+            if (uiState.deletionMod) {
+                DeletionTopAppBar(
+                    itemsCount = uiState.deletionList.size,
+                    onCancel = vm::turnOffDeletionMod,
+                    onDelete = vm::deleteNotes
+                )
+            } else {
+                MyNotesTopAppBar()
+            }
         },
         floatingActionButton = {
             FAB(
@@ -79,7 +89,11 @@ fun MyNotesApp(
                     onNoteClick = {
                         vm.selectNote(note)
                         vm.updateNoteDialogFlag(true)
-                    }
+                    },
+                    isInDeletionList = vm.checkNote(note),
+                    onClickWhileDeletionMod = { vm.deletionModClick(note) },
+                    isDeletionMod = uiState.deletionMod,
+                    turnOnDeletionMode = { vm.turnOnDeletionMod(note) }
                 )
             }
             item {
@@ -133,7 +147,7 @@ fun FAB(
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
-fun MyNotesTopAppBar(scroll: TopAppBarScrollBehavior) {
+fun MyNotesTopAppBar() {
     TopAppBar(
         title = {
             Text(
@@ -143,9 +157,42 @@ fun MyNotesTopAppBar(scroll: TopAppBarScrollBehavior) {
         colors = TopAppBarDefaults.topAppBarColors(
             containerColor = MaterialTheme.colorScheme.surfaceContainer
         ),
-        scrollBehavior = scroll,
+    )
+}
 
-        )
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun DeletionTopAppBar(
+    itemsCount: Int,
+    onDelete: () -> Unit,
+    onCancel: () -> Unit,
+) {
+    TopAppBar(
+        title = {
+            Text(stringResource(R.string.chosen, itemsCount))
+        },
+        colors = TopAppBarDefaults.topAppBarColors(
+            containerColor = MaterialTheme.colorScheme.surfaceContainer
+        ),
+        actions = {
+            IconButton(
+                onClick = onDelete
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = stringResource(R.string.delete)
+                )
+            }
+            IconButton(
+                onClick = onCancel
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Clear,
+                    contentDescription = stringResource(R.string.clear)
+                )
+            }
+        }
+    )
 }
 
 @OptIn(ExperimentalMaterial3Api::class)
@@ -266,16 +313,22 @@ fun NoteDialog(
 @Composable
 fun NoteCard(
     note: Note,
-    onNoteClick: () -> Unit
+    onNoteClick: () -> Unit,
+    onClickWhileDeletionMod: () -> Unit,
+    isDeletionMod: Boolean,
+    turnOnDeletionMode: () -> Unit,
+    isInDeletionList: Boolean
 ) {
     Card(
         modifier = Modifier
             .fillMaxWidth()
-            .clickable(
-                onClick = onNoteClick
+            .combinedClickable(
+                onClick = if (isDeletionMod) onClickWhileDeletionMod else onNoteClick,
+                onLongClick = if (isDeletionMod) onClickWhileDeletionMod else turnOnDeletionMode
             ),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceContainer
+            containerColor = if (isInDeletionList) MaterialTheme.colorScheme.outlineVariant
+            else MaterialTheme.colorScheme.surfaceContainer
         ),
         shape = MaterialTheme.shapes.large,
         elevation = CardDefaults.cardElevation(
@@ -283,22 +336,49 @@ fun NoteCard(
         ),
 
         ) {
-        Column(
-            verticalArrangement = Arrangement.spacedBy(8.dp),
-            modifier = Modifier.padding(16.dp)
+
+        Row(
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Text(
-                text = note.name,
-                style = MaterialTheme.typography.titleLarge,
-                fontWeight = FontWeight.Bold
-            )
-            Text(
-                text = note.description,
-                style = MaterialTheme.typography.titleMedium,
-                maxLines = 3,
-                overflow = TextOverflow.Ellipsis
-            )
+            Column(
+                verticalArrangement = Arrangement.spacedBy(8.dp),
+                modifier = Modifier
+                    .padding(16.dp)
+                    .weight(1f)
+            ) {
+                if (note.name.isNotBlank()) {
+                    Text(
+                        text = note.name,
+                        style = MaterialTheme.typography.titleLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+                if (note.description.isNotBlank()) {
+                    Text(
+                        text = note.description,
+                        style = MaterialTheme.typography.titleMedium,
+                        maxLines = 3,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
+                Text(
+                    text = convertTime(note.lastInteraction),
+                    style = MaterialTheme.typography.labelSmall
+                )
+            }
+            if (isDeletionMod) {
+                Checkbox(
+                    checked = isInDeletionList,
+                    onCheckedChange = { onClickWhileDeletionMod() }
+                )
+            }
         }
 
     }
+}
+
+fun convertTime(time: Long): String {
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy  HH:mm")
+    return dateFormat.format(time)
 }

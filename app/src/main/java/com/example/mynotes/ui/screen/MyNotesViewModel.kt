@@ -41,7 +41,8 @@ class MyNotesViewModel(
         }
     }
 
-    fun updateNote(newNote: Note) {
+    fun updateNote(note: Note) {
+        val newNote = note.also { it.lastInteraction = System.currentTimeMillis() }
         viewModelScope.launch {
             notesRepository.updateNote(newNote)
         }
@@ -65,6 +66,39 @@ class MyNotesViewModel(
         }
     }
 
+    fun checkNote(note: Note): Boolean = note.id in _uiState.value.deletionList
+
+    fun deletionModClick(note: Note){
+        _uiState.update {
+            val newList = it.deletionList.toMutableList()
+            if(checkNote(note)) newList.remove(note.id) else newList.add(note.id)
+            it.copy(deletionList = newList)
+        }
+    }
+
+    fun turnOnDeletionMod(note: Note){
+        _uiState.update { curState ->
+            val newList = curState.deletionList.toMutableList()
+            newList.add(note.id)
+            curState.copy(deletionMod = true, deletionList = newList)
+        }
+    }
+
+    fun turnOffDeletionMod(){
+        _uiState.update { curState ->
+            curState.copy(
+                deletionMod = false,
+                deletionList = emptyList()
+            )
+        }
+    }
+
+    fun deleteNotes(){
+        viewModelScope.launch {
+            notesRepository.deleteNotes(_uiState.value.deletionList)
+        }
+        turnOffDeletionMod()
+    }
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
@@ -81,5 +115,7 @@ data class MyNotesUiState(
     val notes: List<Note> = emptyList(),
     val isNoteCreationDialogActive: Boolean = false,
     val isNoteDialogActive: Boolean = false,
-    val selectedNote: Note? = null
+    val selectedNote: Note? = null,
+    val deletionMod: Boolean = false,
+    val deletionList: List<Int> = emptyList()
 )
