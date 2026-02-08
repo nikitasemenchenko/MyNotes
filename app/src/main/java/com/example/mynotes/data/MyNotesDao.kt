@@ -15,7 +15,7 @@ interface MyNotesDao {
     @Insert(onConflict = OnConflictStrategy.IGNORE)
     suspend fun insert(note: Note)
 
-    @Query("SELECT * FROM notes")
+    @Query("SELECT * FROM notes ORDER BY lastInteraction DESC")
     fun getNotes(): Flow<List<Note>>
 
     @Query("DELETE from notes WHERE id in (:ids)")

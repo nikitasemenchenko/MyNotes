@@ -1,5 +1,7 @@
 package com.example.mynotes.ui.screen
 
+import androidx.compose.foundation.ExperimentalFoundationApi
+import androidx.compose.foundation.clickable
 import androidx.compose.foundation.combinedClickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
@@ -45,7 +47,6 @@ import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.mynotes.R
 import com.example.mynotes.data.Note
-import java.text.SimpleDateFormat
 
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -83,7 +84,7 @@ fun MyNotesApp(
             item {
                 Spacer(modifier = Modifier.height(4.dp))
             }
-            items(uiState.notes) { note ->
+            items(uiState.notes, key = {it.id}) { note ->
                 NoteCard(
                     note = note,
                     onNoteClick = {
@@ -93,7 +94,8 @@ fun MyNotesApp(
                     isInDeletionList = vm.checkNote(note),
                     onClickWhileDeletionMod = { vm.deletionModClick(note) },
                     isDeletionMod = uiState.deletionMod,
-                    turnOnDeletionMode = { vm.turnOnDeletionMod(note) }
+                    turnOnDeletionMode = { vm.turnOnDeletionMod(note) },
+                    timeConvert = vm::convertTime
                 )
             }
             item {
@@ -309,7 +311,10 @@ fun NoteDialog(
         }
     }
 }
-
+@OptIn(
+    ExperimentalFoundationApi::class,
+    ExperimentalMaterial3Api::class
+)
 @Composable
 fun NoteCard(
     note: Note,
@@ -317,7 +322,8 @@ fun NoteCard(
     onClickWhileDeletionMod: () -> Unit,
     isDeletionMod: Boolean,
     turnOnDeletionMode: () -> Unit,
-    isInDeletionList: Boolean
+    isInDeletionList: Boolean,
+    timeConvert: (Long) -> String
 ) {
     Card(
         modifier = Modifier
@@ -363,7 +369,7 @@ fun NoteCard(
                     )
                 }
                 Text(
-                    text = convertTime(note.lastInteraction),
+                    text = timeConvert(note.lastInteraction),
                     style = MaterialTheme.typography.labelSmall
                 )
             }
@@ -376,9 +382,4 @@ fun NoteCard(
         }
 
     }
-}
-
-fun convertTime(time: Long): String {
-    val dateFormat = SimpleDateFormat("dd/MM/yyyy  HH:mm")
-    return dateFormat.format(time)
 }

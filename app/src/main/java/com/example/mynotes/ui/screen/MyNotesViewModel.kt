@@ -13,12 +13,16 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.text.SimpleDateFormat
+import java.util.Locale
 
 class MyNotesViewModel(
     private val notesRepository: MyNotesRepository
 ) : ViewModel() {
     private val _uiState = MutableStateFlow(MyNotesUiState())
     val uiState = _uiState.asStateFlow()
+
+    val dateFormat = SimpleDateFormat("dd/MM/yyyy  HH:mm", Locale.US)
 
     init {
         getNotes()
@@ -42,7 +46,7 @@ class MyNotesViewModel(
     }
 
     fun updateNote(note: Note) {
-        val newNote = note.also { it.lastInteraction = System.currentTimeMillis() }
+        val newNote = note.copy(lastInteraction = System.currentTimeMillis())
         viewModelScope.launch {
             notesRepository.updateNote(newNote)
         }
@@ -99,6 +103,11 @@ class MyNotesViewModel(
         }
         turnOffDeletionMod()
     }
+
+    fun convertTime(time: Long): String {
+        return dateFormat.format(time)
+    }
+
     companion object {
         val Factory: ViewModelProvider.Factory = viewModelFactory {
             initializer {
